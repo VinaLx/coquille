@@ -78,7 +78,7 @@ def coq_rewind(steps=1):
     if isinstance(response, CT.Ok):
         encountered_dots = encountered_dots[:len(encountered_dots) - steps]
     else:
-        info_msg = "[COQUILLE ERROR] Unexpected answer:\n\n%s" % response
+        info_msg = "[COQUILLE ERROR] Unexpected answer:\n\n%s" % CT.collect_texts(response)
 
     refresh()
 
@@ -154,7 +154,7 @@ def coq_raw_query(*args):
         if response.msg is not None:
             info_msg = response.msg
     elif isinstance(response, CT.Err):
-        info_msg = response.err.text
+        info_msg = CT.collect_texts(response.err)
         print("FAIL")
     else:
         print("(ANOMALY) unknown answer: %s" % ET.tostring(response)) # ugly
@@ -192,6 +192,10 @@ def show_goal():
     del buff[:]
 
     response = CT.goals()
+
+    if isinstance(response, CT.Err):
+        info_msg = CT.collect_texts(response.err)
+        return
 
     if response is None:
         vim.command("call coquille#KillSession()")
@@ -335,8 +339,8 @@ def send_until_fail():
         else:
             send_queue.clear()
             if isinstance(response, CT.Err):
+                info_msg = CT.collect_texts(response.err)
                 response = response.err
-                info_msg = response.text
                 loc_s = response.get('loc_s')
                 if loc_s is not None:
                     loc_s = int(loc_s)

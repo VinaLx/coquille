@@ -24,13 +24,17 @@ Goals = namedtuple('Goals', ['fg', 'bg', 'shelved', 'given_up'])
 Goal = namedtuple('Goal', ['id', 'hyp', 'ccl'])
 Evar = namedtuple('Evar', ['info'])
 
+def collect_texts(xml):
+    return ''.join(xml.itertext())
+
 def parse_response(xml):
     assert xml.tag == 'value'
     if xml.get('val') == 'good':
         return Ok(parse_value(xml[0]), None)
     elif xml.get('val') == 'fail':
-        print('err: %s' % ET.tostring(xml))
-        return Err(parse_error(xml))
+        e = parse_error(xml)
+        # print('err: %s' % ET.tostring(xml))
+        return Err(e)
     else:
         assert False, 'expected "good" or "fail" in <value>'
 
@@ -83,10 +87,10 @@ def parse_value(xml):
     elif xml.tag == 'evar':
         return Evar(*map(parse_value, xml))
     elif xml.tag == 'xml' or xml.tag == 'richpp':
-        return ''.join(xml.itertext())
+        return collect_texts(xml)
 
 def parse_error(xml):
-    return ET.fromstring(re.sub(r"<state_id val=\"\d+\" />", '', ET.tostring(xml)))
+    return ET.fromstring(re.sub(r'<state_id val="\d+" />', '', ET.tostring(xml)))
 
 def build(tag, val=None, children=()):
     attribs = {'val': val} if val is not None else {}
