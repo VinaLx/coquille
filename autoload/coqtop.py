@@ -24,6 +24,8 @@ Goals = namedtuple('Goals', ['fg', 'bg', 'shelved', 'given_up'])
 Goal = namedtuple('Goal', ['id', 'hyp', 'ccl'])
 Evar = namedtuple('Evar', ['info'])
 
+global_encoding = 'utf-8'
+
 def collect_texts(xml):
     return ''.join(xml.itertext())
 
@@ -110,7 +112,7 @@ def encode_value(v):
         return xml
     elif isinstance(v, str):
         xml = build('string')
-        xml.text = v
+        xml.text = unicode(v, global_encoding)
         return xml
     elif isinstance(v, int):
         xml = build('int')
@@ -197,9 +199,9 @@ def get_answer():
             # coqtop died
             return None
 
-def call(name, arg, encoding='utf-8'):
+def call(name, arg):
     xml = encode_call(name, arg)
-    msg = ET.tostring(xml, encoding)
+    msg = ET.tostring(xml, global_encoding)
     send_cmd(msg)
     response = get_answer()
     return response
@@ -249,9 +251,9 @@ def cur_state():
     else:
         return state_id
 
-def advance(cmd, encoding = 'utf-8'):
+def advance(cmd):
     global state_id
-    r = call('Add', ((cmd, -1), (cur_state(), True)), encoding)
+    r = call('Add', ((cmd, -1), (cur_state(), True)), )
     if r is None:
         return r
     if isinstance(r, Err):
@@ -268,8 +270,8 @@ def rewind(step = 1):
     states = states[0:idx]
     return call('Edit_at', state_id)
 
-def query(cmd, encoding = 'utf-8'):
-    r = call('Query', (cmd, cur_state()), encoding)
+def query(cmd):
+    r = call('Query', (cmd, cur_state()))
     return r
 
 def goals():

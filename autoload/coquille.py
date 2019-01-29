@@ -141,9 +141,7 @@ def coq_raw_query(*args):
 
     raw_query = ' '.join(args)
 
-    encoding = vim.eval("&encoding") or 'utf-8'
-
-    response = CT.query(raw_query, encoding)
+    response = CT.query(raw_query)
 
     if response is None:
         vim.command("call coquille#KillSession()")
@@ -163,6 +161,8 @@ def coq_raw_query(*args):
 
 
 def launch_coq(*args):
+    encoding = vim.eval('&fileencoding') or 'utf-8'
+    CT.global_encoding = encoding
     CT.restart_coq(*args)
 
 def debug():
@@ -313,7 +313,6 @@ def send_until_fail():
 
     global encountered_dots, error_at, info_msg
 
-    encoding = vim.eval('&fileencoding') or 'utf-8'
 
     while len(send_queue) > 0:
         reset_color()
@@ -322,7 +321,7 @@ def send_until_fail():
         message_range = send_queue.popleft()
         message = _between(message_range['start'], message_range['stop'])
 
-        response = CT.advance(message, encoding)
+        response = CT.advance(message)
 
         if response is None:
             vim.command("call coquille#KillSession()")
