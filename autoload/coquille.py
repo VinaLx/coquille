@@ -19,7 +19,7 @@ send_queue = deque([])
 
 error_at = None
 
-info_msg = None
+info_msg = []
 
 ###################
 # synchronization #
@@ -41,7 +41,7 @@ def _reset():
     send_queue = deque([])
     saved_sync = None
     error_at   = None
-    info_msg   = None
+    info_msg   = []
     reset_color()
 
 #####################
@@ -78,7 +78,7 @@ def coq_rewind(steps=1):
     if isinstance(response, CT.Ok):
         encountered_dots = encountered_dots[:len(encountered_dots) - steps]
     else:
-        info_msg = "[COQUILLE ERROR] Unexpected answer:\n\n%s" % CT.collect_texts(response)
+        info_msg.append("[COQUILLE ERROR] Unexpected answer:\n\n%s" % CT.collect_texts(response))
 
     refresh()
 
@@ -149,10 +149,9 @@ def coq_raw_query(*args):
         return
 
     if isinstance(response, CT.Ok):
-        if response.msg is not None:
-            info_msg = response.msg
+        info_msg += response.msg
     elif isinstance(response, CT.Err):
-        info_msg = CT.collect_texts(response.err)
+        info_msg.append(CT.collect_texts(response.err))
         print("FAIL")
     else:
         print("(ANOMALY) unknown answer: %s" % ET.tostring(response)) # ugly
@@ -194,7 +193,7 @@ def show_goal():
     response = CT.goals()
 
     if isinstance(response, CT.Err):
-        info_msg = CT.collect_texts(response.err)
+        info_msg.append(CT.collect_texts(response.err))
         return
 
     if response is None:
@@ -202,8 +201,7 @@ def show_goal():
         print('ERROR: the Coq process died')
         return
 
-    if response.msg is not None:
-        info_msg = response.msg
+    info_msg += response.msg
 
     if response.val.val is None:
         buff.append('No goals.')
@@ -241,14 +239,16 @@ def show_info():
             buff = b
             break
 
-    del buff[:]
-    if info_msg is not None:
-        lst = info_msg.split('\n')
+    buff[:] = []
+
+    for msg in info_msg:
+        lst = msg.split('\n')
+        lst.append('')
         buff.append(map(lambda s: s.encode('utf-8'), lst))
 
 def clear_info():
     global info_msg
-    info_msg = ''
+    info_msg = []
     show_info()
 
 def reset_color():
@@ -313,6 +313,7 @@ def send_until_fail():
 
     global encountered_dots, error_at, info_msg
 
+    info_messages = []
 
     while len(send_queue) > 0:
         reset_color()
@@ -333,12 +334,13 @@ def send_until_fail():
             encountered_dots.append((eline, ecol + 1))
 
             optionnal_info = response.val[1]
-            if len(response.val) > 1 and isinstance(response.val[1], tuple):
-                info_msg = response.val[1][1]
+            if len(response.val) > 1 and isinstance(response.val[1], tuple) and response.val[1][1]:
+                info_messages.append(response.val[1][1])
+            info_messages += response.msg
         else:
             send_queue.clear()
             if isinstance(response, CT.Err):
-                info_msg = CT.collect_texts(response.err)
+                info_messages.append(CT.collect_texts(response.err))
                 response = response.err
                 loc_s = response.get('loc_s')
                 if loc_s is not None:
@@ -351,6 +353,8 @@ def send_until_fail():
             else:
                 print("(ANOMALY) unknown answer: %s" % ET.tostring(response))
             break
+
+    info_msg += info_messages
 
     refresh()
 

@@ -27,12 +27,12 @@ Evar = namedtuple('Evar', ['info'])
 global_encoding = 'utf-8'
 
 def collect_texts(xml):
-    return ''.join(xml.itertext())
+    return ''.join(xml.itertext()).strip()
 
 def parse_response(xml):
     assert xml.tag == 'value'
     if xml.get('val') == 'good':
-        return Ok(parse_value(xml[0]), None)
+        return Ok(parse_value(xml[0]), [])
     elif xml.get('val') == 'fail':
         e = parse_error(xml)
         # print('err: %s' % ET.tostring(xml))
@@ -165,6 +165,17 @@ def escape(cmd):
               .replace("&#40;", '(') \
               .replace("&#41;", ')')
 
+def extract_message(feedback):
+    messages = []
+    for message_node in feedback.findall('feedback_content'):
+        if message_node.get('val') != 'message':
+            continue
+        for texts in message_node.findall('message'):
+            msg = collect_texts(texts)
+            if msg:
+                messages.append(msg)
+    return messages
+
 def get_answer():
     fd = coqtop.stdout.fileno()
     data = ''
@@ -172,26 +183,24 @@ def get_answer():
         try:
             data += os.read(fd, 0x4000)
             try:
+                #  print "######response######\n{}".format(data)
                 elt = ET.fromstring('<coqtoproot>' + escape(data) + '</coqtoproot>')
                 shouldWait = True
                 valueNode = None
-                messageNode = None
+                messages = []
                 for c in elt:
                     if c.tag == 'value':
                         shouldWait = False
                         valueNode = c
-                    if c.tag == 'message':
-                        if messageNode is not None:
-                            messageNode = messageNode + "\n\n" + parse_value(c[2])
-                        else:
-                            messageNode = parse_value(c[2])
+                    if c.tag == 'feedback':
+                        messages += extract_message(c)
+                        #  print "******messages******\n{}".format(messages)
                 if shouldWait:
                     continue
                 else:
                     vp = parse_response(valueNode)
-                    if messageNode is not None:
-                        if isinstance(vp, Ok):
-                            return Ok(vp.val, messageNode)
+                    if isinstance(vp, Ok):
+                        return Ok(vp.val, messages)
                     return vp
             except ET.ParseError:
                 continue
@@ -207,6 +216,7 @@ def call(name, arg):
     return response
 
 def send_cmd(cmd):
+    #  print "-------request------\n{}".encode('utf-8').format(cmd)
     coqtop.stdin.write(cmd)
 
 def restart_coq(*args):
@@ -253,7 +263,7 @@ def cur_state():
 
 def advance(cmd):
     global state_id
-    r = call('Add', ((cmd, -1), (cur_state(), True)), )
+    r = call('Add', ((cmd, -1), (cur_state(), True)))
     if r is None:
         return r
     if isinstance(r, Err):
