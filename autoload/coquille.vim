@@ -123,4 +123,7 @@ function! coquille#Register()
     let b:errors  = -1
 
     command! -bar -buffer -nargs=* -complete=file CoqLaunch call coquille#Launch(<f-args>)
+    if !exists("g:coquille_utf8_mappings") || g:coquille_utf8_mappings
+        runtime coq-utf8.vim
+    endif
 endfunction
