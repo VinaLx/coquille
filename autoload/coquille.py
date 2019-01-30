@@ -3,6 +3,7 @@ import vim
 import re
 import xml.etree.ElementTree as ET
 import coqtop as CT
+import itertools
 
 from collections import deque
 
@@ -29,6 +30,12 @@ def _find_buffer(name):
     for b in vim.buffers:
         if re.match(".*{}$".format(name), b.name):
             return b
+    return None
+
+def _find_window(name):
+    for w in vim.current.tabpage.windows:
+        if re.match(".*{}$".format(name), w.buffer.name):
+            return w
     return None
 
 def sync():
@@ -209,7 +216,7 @@ def show_goal():
     info_msg += response.msg
 
     if response.val.val is None:
-        buff.append('No goals.')
+        buff[:] = ['No goals.']
         return
 
     goals = response.val.val
@@ -218,7 +225,7 @@ def show_goal():
 
     nb_subgoals = len(sub_goals)
     plural_opt = '' if nb_subgoals == 1 else 's'
-    buff.append(['%d subgoal%s' % (nb_subgoals, plural_opt), ''])
+    buff[:] = ['%d subgoal%s' % (nb_subgoals, plural_opt), '']
 
     for idx, sub_goal in enumerate(sub_goals):
         _id = sub_goal.id
@@ -235,17 +242,22 @@ def show_goal():
         buff.append(lines)
         buff.append('')
 
+def _split_single_info(msg):
+    return map(lambda s: s.encode('utf-8'), msg.split('\n'))
+
 def show_info():
     global info_msg
 
+    if not info_msg:
+        return
+
     buff = _find_buffer('Infos')
 
-    buff[:] = []
+    buff[:] = _split_single_info(info_msg[0])
 
-    for msg in info_msg:
-        lst = msg.split('\n')
-        lst.append('')
-        buff.append(map(lambda s: s.encode('utf-8'), lst))
+    for msg in itertools.islice(info_msg, 1, None):
+        buff.append('')
+        buff.append(_split_single_info(msg))
 
 def clear_info():
     global info_msg
