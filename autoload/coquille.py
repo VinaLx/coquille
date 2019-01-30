@@ -25,9 +25,17 @@ info_msg = []
 # synchronization #
 ###################
 
+def _find_buffer(name):
+    for b in vim.buffers:
+        if re.match(".*{}$".format(name), b.name):
+            return b
+    return None
+
 def sync():
     global saved_sync
+
     curr_sync = vimbufsync.sync()
+
     if not saved_sync or curr_sync.buf() != saved_sync.buf():
         _reset()
     else:
@@ -57,12 +65,12 @@ def goto_last_sent_dot():
     vim.current.window.cursor = (line + 1, col)
 
 def coq_rewind(steps=1):
-    clear_info()
-
     global encountered_dots, info_msg
 
     if steps < 1 or encountered_dots == []:
         return
+
+    clear_info()
 
     if CT.coqtop is None:
         print("Error: Coqtop isn't running. Are you sure you called :CoqLaunch?")
@@ -183,11 +191,8 @@ def refresh():
 def show_goal():
     global info_msg
 
-    buff = None
-    for b in vim.buffers:
-        if re.match(".*Goals$", b.name):
-            buff = b
-            break
+    buff = _find_buffer('Goals')
+    
     del buff[:]
 
     response = CT.goals()
@@ -233,11 +238,7 @@ def show_goal():
 def show_info():
     global info_msg
 
-    buff = None
-    for b in vim.buffers:
-        if re.match(".*Infos$", b.name):
-            buff = b
-            break
+    buff = _find_buffer('Infos')
 
     buff[:] = []
 
