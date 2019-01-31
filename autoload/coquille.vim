@@ -89,7 +89,11 @@ function! coquille#Launch(...)
         let s:coq_running = 1
 
         " initialize the plugin (launch coqtop)
-        py coquille.launch_coq(*vim.eval("map(copy(a:000),'expand(v:val)')"))
+        if !exists("g:coquille_coqtop_args")
+            let g:coquille_coqtop_args = []
+        endif
+        " py coquille.launch_coq(*vim.eval("map(copy(a:000),'expand(v:val)')"))
+        py coquille.launch_coq(*vim.eval("g:coquille_coqtop_args"))
 
         " make the different commands accessible
         command! -buffer GotoDot py coquille.goto_last_sent_dot()
