@@ -378,22 +378,21 @@ def send_until_fail():
                     tuple) and response.val[1][1]:
                 info_messages.append(response.val[1][1])
             info_messages += response.msg
-        else:
+        elif isinstance(response, CT.Err):
+            info_messages.append(CT.collect_texts(response.err))
+            response = response.err
+            loc_s = response.get('loc_s')
+            if loc_s is not None:
+                loc_s = int(loc_s)
+                loc_e = int(response.get('loc_e'))
+                (l, c) = message_range['start']
+                (l_start, c_start) = _pos_from_offset(c, message, loc_s)
+                (l_stop, c_stop) = _pos_from_offset(c, message, loc_e)
+                error_at = ((l + l_start, c_start), (l + l_stop, c_stop))
             send_queue.clear()
-            if isinstance(response, CT.Err):
-                info_messages.append(CT.collect_texts(response.err))
-                response = response.err
-                loc_s = response.get('loc_s')
-                if loc_s is not None:
-                    loc_s = int(loc_s)
-                    loc_e = int(response.get('loc_e'))
-                    (l, c) = message_range['start']
-                    (l_start, c_start) = _pos_from_offset(c, message, loc_s)
-                    (l_stop, c_stop) = _pos_from_offset(c, message, loc_e)
-                    error_at = ((l + l_start, c_start), (l + l_stop, c_stop))
-            else:
-                print("(ANOMALY) unknown answer: %s" % ET.tostring(response))
-            break
+        else:
+            print("(ANOMALY) unknown answer: %s" % ET.tostring(response))
+            send_queue.clear()
 
     info_msg += info_messages
 
