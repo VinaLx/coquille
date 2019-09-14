@@ -1,7 +1,7 @@
 " Logic
 imap <buffer> <LocalLeader>all ∀
 imap <buffer> <LocalLeader>forall ∀
-imap <buffer> <LocalLeader>exists ∃
+imap <buffer> <LocalLeader>ex ∃
 imap <buffer> <LocalLeader>iff ↔
 imap <buffer> <LocalLeader>land ∧
 imap <buffer> <LocalLeader>lor ∨
@@ -12,6 +12,10 @@ imap <buffer> <LocalLeader>/= ≠
 imap <buffer> <LocalLeader>to →
 imap <buffer> <LocalLeader>-> →
 imap <buffer> <C-_> →
+imap <buffer> <LocalLeader>{ ⦃⦄<Left>
+imap <buffer> <LocalLeader>} ⦄<Left>
+imap <buffer> <LocalLeader>in ∈
+imap <buffer> <LocalLeader>\|- ⊢
 
 " Greek (lower)
 imap <buffer> <LocalLeader>alpha α
@@ -64,9 +68,7 @@ imap <buffer> <LocalLeader>v ω
 " Greek (upper)
 imap <buffer> <LocalLeader>Alpha Α
 imap <buffer> <LocalLeader>Beta Β
-imap <buffer> <LocalLeader>Gamma Γ
 imap <buffer> <LocalLeader>G Γ
-imap <buffer> <LocalLeader>Delta Δ
 imap <buffer> <LocalLeader>D Δ
 imap <buffer> <LocalLeader>Epsilon Ε
 imap <buffer> <LocalLeader>Zeta Ζ
@@ -79,10 +81,8 @@ imap <buffer> <LocalLeader>Mu Μ
 imap <buffer> <LocalLeader>Nu Ν
 imap <buffer> <LocalLeader>Xi Ξ
 imap <buffer> <LocalLeader>Omicron Ο
-imap <buffer> <LocalLeader>Pi Π
 imap <buffer> <LocalLeader>P Π
 imap <buffer> <LocalLeader>Rho Ρ
-imap <buffer> <LocalLeader>Sigma Σ
 imap <buffer> <LocalLeader>S Σ
 imap <buffer> <LocalLeader>Tau Τ
 imap <buffer> <LocalLeader>Upsilon Υ
@@ -92,10 +92,22 @@ imap <buffer> <LocalLeader>Chi Χ
 imap <buffer> <LocalLeader>Psi Ψ
 imap <buffer> <LocalLeader>Omega Ω
 
+" Subscripts
+imap <buffer> <LocalLeader>0 ₀
+imap <buffer> <LocalLeader>1 ₁
+imap <buffer> <LocalLeader>2 ₂
+imap <buffer> <LocalLeader>3 ₃
+imap <buffer> <LocalLeader>4 ₄
+imap <buffer> <LocalLeader>5 ₅
+imap <buffer> <LocalLeader>6 ₆
+imap <buffer> <LocalLeader>7 ₇
+imap <buffer> <LocalLeader>8 ₈
+imap <buffer> <LocalLeader>9 ₉
+
 " Logic
 cmap <buffer> <LocalLeader>all ∀
 cmap <buffer> <LocalLeader>forall ∀
-cmap <buffer> <LocalLeader>exists ∃
+cmap <buffer> <LocalLeader>ex ∃
 cmap <buffer> <LocalLeader>iff ↔
 cmap <buffer> <LocalLeader>land ∧
 cmap <buffer> <LocalLeader>lor ∨
@@ -106,6 +118,10 @@ cmap <buffer> <LocalLeader>/= ≠
 cmap <buffer> <LocalLeader>to →
 cmap <buffer> <LocalLeader>-> →
 cmap <buffer> <C-_> →
+cmap <buffer> <LocalLeader>{ ⦃⦄<Left>
+cmap <buffer> <LocalLeader>} ⦄<Left>
+cmap <buffer> <LocalLeader>in ∈
+cmap <buffer> <LocalLeader>\|- ⊢
 
 " Greek (lower)
 cmap <buffer> <LocalLeader>alpha α
@@ -158,9 +174,7 @@ cmap <buffer> <LocalLeader>v ω
 " Greek (upper)
 cmap <buffer> <LocalLeader>Alpha Α
 cmap <buffer> <LocalLeader>Beta Β
-cmap <buffer> <LocalLeader>Gamma Γ
 cmap <buffer> <LocalLeader>G Γ
-cmap <buffer> <LocalLeader>Delta Δ
 cmap <buffer> <LocalLeader>D Δ
 cmap <buffer> <LocalLeader>Epsilon Ε
 cmap <buffer> <LocalLeader>Zeta Ζ
@@ -173,10 +187,8 @@ cmap <buffer> <LocalLeader>Mu Μ
 cmap <buffer> <LocalLeader>Nu Ν
 cmap <buffer> <LocalLeader>Xi Ξ
 cmap <buffer> <LocalLeader>Omicron Ο
-cmap <buffer> <LocalLeader>Pi Π
 cmap <buffer> <LocalLeader>P Π
 cmap <buffer> <LocalLeader>Rho Ρ
-cmap <buffer> <LocalLeader>Sigma Σ
 cmap <buffer> <LocalLeader>S Σ
 cmap <buffer> <LocalLeader>Tau Τ
 cmap <buffer> <LocalLeader>Upsilon Υ
@@ -186,3 +198,14 @@ cmap <buffer> <LocalLeader>Chi Χ
 cmap <buffer> <LocalLeader>Psi Ψ
 cmap <buffer> <LocalLeader>Omega Ω
 
+" Subscripts
+cmap <buffer> <LocalLeader>0 ₀
+cmap <buffer> <LocalLeader>1 ₁
+cmap <buffer> <LocalLeader>2 ₂
+cmap <buffer> <LocalLeader>3 ₃
+cmap <buffer> <LocalLeader>4 ₄
+cmap <buffer> <LocalLeader>5 ₅
+cmap <buffer> <LocalLeader>6 ₆
+cmap <buffer> <LocalLeader>7 ₇
+cmap <buffer> <LocalLeader>8 ₈
+cmap <buffer> <LocalLeader>9 ₉
