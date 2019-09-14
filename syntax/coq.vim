@@ -59,7 +59,7 @@ syn region coqKwdParen         contained contains=@coqTerm matchgroup=coqTermPun
 syn keyword coqKwd             contained else end exists2 fix forall fun if in struct then as return
 syn match   coqKwd             contained "\<where\>"
 syn match   coqKwd             contained "\<exists!\?"
-syn match   coqKwd             contained "|\|/\\\|\\/\|<->\|\~\|->\|=>\|{\|}\|&\|+\|-\|*\|=\|>\|<\|<="
+syn match   coqKwd             contained "|\|/\\\|\\/\|<->\|\~\|->\|=>\|{\|}\|&\|+\|-\|*\|=\|>\|<\|<=\|↔\|∧\|∨"
 syn match coqTermPunctuation   contained ":=\|:>\|:\|;\|,\|||\|\[\|\]\|@\|?\|\<_\>"
 
 " Various
@@ -237,7 +237,7 @@ syn keyword coqTacticKwd contained as by in using with into after until return
 
   " The following is just to help other plugins to detect via syntax groups that we are inside a proof
 syn keyword coqProofKwd         contained else end exists exists2 forall fun if in match let struct then where with as return
-syn match   coqProofKwd         contained "|\|/\\\|\\/\|<->\|\~\|->\|=>\|{\|}\|&\|+\|="
+syn match   coqProofKwd         contained "|\|/\\\|\\/\|<->\|\~\|->\|=>\|{\|}\|&\|+\|=\|→\|∀"
 syn match   coqProofPunctuation contained "(\|)\|:=\|:>\|:\|\.\|;\|,\|||\|\[\|\]\|@\|?"
 syn region  coqProofComment     contained contains=coqProofComment,coqTodo start="(\*" end="\*)" extend keepend
 
