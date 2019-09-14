@@ -4,7 +4,7 @@ import subprocess
 import xml.etree.ElementTree as ET
 import signal
 
-from collections import deque, namedtuple
+from collections import namedtuple
 
 Ok = namedtuple('Ok', ['val', 'msg'])
 Err = namedtuple('Err', ['err'])
@@ -26,8 +26,10 @@ Evar = namedtuple('Evar', ['info'])
 
 global_encoding = 'utf-8'
 
+
 def collect_texts(xml):
     return ''.join(xml.itertext()).strip()
+
 
 def parse_response(xml):
     assert xml.tag == 'value'
@@ -39,6 +41,7 @@ def parse_response(xml):
         return Err(e)
     else:
         assert False, 'expected "good" or "fail" in <value>'
+
 
 def parse_value(xml):
     if xml.tag == 'unit':
@@ -91,8 +94,14 @@ def parse_value(xml):
     elif xml.tag == 'xml' or xml.tag == 'richpp':
         return collect_texts(xml)
 
+
 def parse_error(xml):
-    return ET.fromstring(re.sub(r'<state_id val="\d+" />', '', ET.tostring(xml)))
+    return ET.fromstring(
+        re.sub(
+            r'<state_id val="\d+" />',
+            '',
+            ET.tostring(xml)))
+
 
 def build(tag, val=None, children=()):
     attribs = {'val': val} if val is not None else {}
@@ -100,8 +109,10 @@ def build(tag, val=None, children=()):
     xml.extend(children)
     return xml
 
+
 def encode_call(name, arg):
     return build('call', name, [encode_value(arg)])
+
 
 def encode_value(v):
     if v == ():
@@ -112,7 +123,7 @@ def encode_value(v):
         return xml
     elif isinstance(v, str):
         xml = build('string')
-        xml.text = unicode(v, global_encoding)
+        xml.text = v.encode(global_encoding)
         return xml
     elif isinstance(v, int):
         xml = build('int')
@@ -141,10 +152,12 @@ def encode_value(v):
     else:
         assert False, 'unrecognized type in encode_value: %r' % (type(v),)
 
+
 coqtop = None
 states = []
 state_id = None
 root_state = None
+
 
 def kill_coqtop():
     global coqtop
@@ -156,14 +169,17 @@ def kill_coqtop():
             pass
         coqtop = None
 
+
 def ignore_sigint():
     signal.signal(signal.SIGINT, signal.SIG_IGN)
+
 
 def escape(cmd):
     return cmd.replace("&nbsp;", ' ') \
               .replace("&apos;", '\'') \
               .replace("&#40;", '(') \
               .replace("&#41;", ')')
+
 
 def extract_message(feedback):
     messages = []
@@ -176,6 +192,7 @@ def extract_message(feedback):
                 messages.append(msg)
     return messages
 
+
 def get_answer():
     fd = coqtop.stdout.fileno()
     data = ''
@@ -184,7 +201,8 @@ def get_answer():
             data += os.read(fd, 0x4000)
             try:
                 #  print "######response######\n{}".format(data)
-                elt = ET.fromstring('<coqtoproot>' + escape(data) + '</coqtoproot>')
+                elt = ET.fromstring(
+                    '<coqtoproot>' + escape(data) + '</coqtoproot>')
                 shouldWait = True
                 valueNode = None
                 messages = []
@@ -208,6 +226,7 @@ def get_answer():
             # coqtop died
             return None
 
+
 def call(name, arg):
     xml = encode_call(name, arg)
     msg = ET.tostring(xml, global_encoding)
@@ -215,34 +234,31 @@ def call(name, arg):
     response = get_answer()
     return response
 
+
 def send_cmd(cmd):
     #  print "-------request------\n{}".encode('utf-8').format(cmd)
     coqtop.stdin.write(cmd)
 
+
 def restart_coq(*args):
     global coqtop, root_state, state_id
-    if coqtop: kill_coqtop()
-    options = [ 'coqidetop'
-              , '-main-channel'
-              , 'stdfds'
-              , '-async-proofs'
-              , 'on'
-              ]
+    if coqtop:
+        kill_coqtop()
+    options = ['coqidetop', '-main-channel', 'stdfds', '-async-proofs', 'on'
+               ]
     try:
         if os.name == 'nt':
             coqtop = subprocess.Popen(
-                options + list(args)
-              , stdin = subprocess.PIPE
-              , stdout = subprocess.PIPE
-              , stderr = subprocess.STDOUT
-            )
+                options + list(args),
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT)
         else:
             coqtop = subprocess.Popen(
-                options + list(args)
-              , stdin = subprocess.PIPE
-              , stdout = subprocess.PIPE
-              , preexec_fn = ignore_sigint
-            )
+                options + list(args),
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                preexec_fn=ignore_sigint)
 
         r = call('Init', Option(None))
         assert isinstance(r, Ok)
@@ -251,14 +267,17 @@ def restart_coq(*args):
     except OSError:
         print("Error: couldn't launch coqtop")
 
+
 def launch_coq(*args):
     restart_coq(*args)
+
 
 def cur_state():
     if len(states) == 0:
         return root_state
     else:
         return state_id
+
 
 def advance(cmd):
     global state_id
@@ -271,7 +290,8 @@ def advance(cmd):
     state_id = r.val[0]
     return r
 
-def rewind(step = 1):
+
+def rewind(step=1):
     global states, state_id
     assert step <= len(states)
     idx = len(states) - step
@@ -279,12 +299,15 @@ def rewind(step = 1):
     states = states[0:idx]
     return call('Edit_at', state_id)
 
+
 def query(cmd):
     r = call('Query', (cmd, cur_state()))
     return r
 
+
 def goals():
     return call('Goal', ())
+
 
 def read_states():
     return states

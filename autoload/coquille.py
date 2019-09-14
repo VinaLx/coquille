@@ -1,4 +1,5 @@
 import vim
+import vimbufsync
 
 import re
 import xml.etree.ElementTree as ET
@@ -7,7 +8,6 @@ import itertools
 
 from collections import deque
 
-import vimbufsync
 vimbufsync.check_version("0.1.0", who="coquille")
 
 #: See vimbufsync ( https://github.com/def-lkb/vimbufsync )
@@ -26,17 +26,20 @@ info_msg = []
 # synchronization #
 ###################
 
+
 def _find_buffer(name):
     for b in vim.buffers:
         if re.match(".*{}$".format(name), b.name):
             return b
     return None
 
+
 def _find_window(name):
     for w in vim.current.tabpage.windows:
         if re.match(".*{}$".format(name), w.buffer.name):
             return w
     return None
+
 
 def sync():
     global saved_sync
@@ -47,29 +50,33 @@ def sync():
         _reset()
     else:
         (line, col) = saved_sync.pos()
-        rewind_to(line - 1, col) # vim indexes from lines 1, coquille from 0
+        rewind_to(line - 1, col)  # vim indexes from lines 1, coquille from 0
     saved_sync = curr_sync
+
 
 def _reset():
     global saved_sync, encountered_dots, info_msg, error_at, send_queue
     encountered_dots = []
     send_queue = deque([])
     saved_sync = None
-    error_at   = None
-    info_msg   = []
+    error_at = None
+    info_msg = []
     reset_color()
 
 #####################
 # exported commands #
 #####################
 
+
 def kill_coqtop():
     CT.kill_coqtop()
     _reset()
 
+
 def goto_last_sent_dot():
-    (line, col) = (0,1) if encountered_dots == [] else encountered_dots[-1]
+    (line, col) = (0, 1) if encountered_dots == [] else encountered_dots[-1]
     vim.current.window.cursor = (line + 1, col)
+
 
 def coq_rewind(steps=1):
     global encountered_dots, info_msg
@@ -93,25 +100,29 @@ def coq_rewind(steps=1):
     if isinstance(response, CT.Ok):
         encountered_dots = encountered_dots[:len(encountered_dots) - steps]
     else:
-        info_msg.append("[COQUILLE ERROR] Unexpected answer:\n\n%s" % CT.collect_texts(response))
+        info_msg.append(
+            "[COQUILLE ERROR] Unexpected answer:\n\n%s" %
+            CT.collect_texts(response))
 
     refresh()
 
-    # steps != 1 means that either the user called "CoqToCursor" or just started
-    # editing in the "locked" zone. In both these cases we don't want to move
-    # the cursor.
+    # steps != 1 means that either the user called "CoqToCursor" or just
+    # started editing in the "locked" zone. In both these cases we don't want
+    # to move the cursor.
     if (steps == 1 and vim.eval('g:coquille_auto_move') == 'true'):
         goto_last_sent_dot()
 
+
 def coq_to_cursor():
     if CT.coqtop is None:
-        print("Error: Coqtop isn't running. Are you sure you called :CoqLaunch?")
+        print(
+            "Error: Coqtop isn't running. Are you sure you called :CoqLaunch?")
         return
 
     sync()
 
     (cline, ccol) = vim.current.window.cursor
-    (line, col)  = encountered_dots[-1] if encountered_dots else (0,0)
+    (line, col) = encountered_dots[-1] if encountered_dots else (0, 0)
 
     if cline < line or (cline == line and ccol < col):
         rewind_to(cline - 1, ccol)
@@ -120,12 +131,13 @@ def coq_to_cursor():
             r = _get_message_range((line, col))
             if r is not None and r['stop'] <= (cline - 1, ccol):
                 line = r['stop'][0]
-                col  = r['stop'][1] + 1
+                col = r['stop'][1] + 1
                 send_queue.append(r)
             else:
                 break
 
         send_until_fail()
+
 
 def coq_next():
     if CT.coqtop is None:
@@ -134,10 +146,11 @@ def coq_next():
 
     sync()
 
-    (line, col)  = encountered_dots[-1] if encountered_dots else (0,0)
+    (line, col) = encountered_dots[-1] if encountered_dots else (0, 0)
     message_range = _get_message_range((line, col))
 
-    if message_range is None: return
+    if message_range is None:
+        return
 
     send_queue.append(message_range)
 
@@ -145,6 +158,7 @@ def coq_next():
 
     if (vim.eval('g:coquille_auto_move') == 'true'):
         goto_last_sent_dot()
+
 
 def coq_raw_query(*args):
     clear_info()
@@ -169,7 +183,7 @@ def coq_raw_query(*args):
         info_msg.append(CT.collect_texts(response.err))
         print("FAIL")
     else:
-        print("(ANOMALY) unknown answer: %s" % ET.tostring(response)) # ugly
+        print("(ANOMALY) unknown answer: %s" % ET.tostring(response))  # ugly
 
     show_info()
 
@@ -178,6 +192,7 @@ def launch_coq(*args):
     encoding = vim.eval('&fileencoding') or 'utf-8'
     CT.global_encoding = encoding
     CT.restart_coq(*args)
+
 
 def debug():
     if encountered_dots:
@@ -190,16 +205,18 @@ def debug():
 # IDE tools: Goal, Infos and colors #
 #####################################
 
+
 def refresh():
     show_goal()
     show_info()
     reset_color()
 
+
 def show_goal():
     global info_msg
 
     buff = _find_buffer('Goals')
-    
+
     del buff[:]
 
     response = CT.goals()
@@ -237,13 +254,17 @@ def show_goal():
                 lst = map(lambda s: s.encode('utf-8'), hyp.split('\n'))
                 buff.append(lst)
         buff.append('')
-        buff.append('======================== ( %d / %d )' % (idx+1 , nb_subgoals))
+        buff.append(
+            '======================== ( %d / %d )' %
+            (idx + 1, nb_subgoals))
         lines = map(lambda s: s.encode('utf-8'), ccl.split('\n'))
         buff.append(lines)
         buff.append('')
 
+
 def _split_single_info(msg):
     return map(lambda s: s.encode('utf-8'), msg.split('\n'))
+
 
 def show_info():
     global info_msg
@@ -259,10 +280,12 @@ def show_info():
         buff.append('')
         buff.append(_split_single_info(msg))
 
+
 def clear_info():
     global info_msg
     info_msg = []
     show_info()
+
 
 def reset_color():
     global error_at
@@ -279,26 +302,27 @@ def reset_color():
     # Recolor
     if encountered_dots:
         (line, col) = encountered_dots[-1]
-        start = { 'line': 0 , 'col': 0 }
-        stop  = { 'line': line + 1, 'col': col }
+        start = {'line': 0, 'col': 0}
+        stop = {'line': line + 1, 'col': col}
         zone = _make_matcher(start, stop)
         vim.command("let b:checked = matchadd('CheckedByCoq', '%s')" % zone)
     if len(send_queue) > 0:
-        (l, c) = encountered_dots[-1] if encountered_dots else (0,-1)
+        (l, c) = encountered_dots[-1] if encountered_dots else (0, -1)
         r = send_queue.pop()
         send_queue.append(r)
         (line, col) = r['stop']
-        start = { 'line': l , 'col': c + 1 }
-        stop  = { 'line': line + 1, 'col': col }
+        start = {'line': l, 'col': c + 1}
+        stop = {'line': line + 1, 'col': col}
         zone = _make_matcher(start, stop)
         vim.command("let b:sent = matchadd('SentToCoq', '%s')" % zone)
     if error_at:
         ((sline, scol), (eline, ecol)) = error_at
-        start = { 'line': sline + 1, 'col': scol }
-        stop  = { 'line': eline + 1, 'col': ecol }
+        start = {'line': sline + 1, 'col': scol}
+        stop = {'line': eline + 1, 'col': ecol}
         zone = _make_matcher(start, stop)
         vim.command("let b:errors = matchadd('CoqError', '%s')" % zone)
         error_at = None
+
 
 def rewind_to(line, col):
     if CT.coqtop is None:
@@ -307,7 +331,7 @@ def rewind_to(line, col):
         print('Please report.')
         return
 
-    predicate = lambda x: x <= (line, col)
+    def predicate(x): return x <= (line, col)
     lst = filter(predicate, encountered_dots)
     steps = len(encountered_dots) - len(lst)
     coq_rewind(steps)
@@ -315,6 +339,7 @@ def rewind_to(line, col):
 #############################
 # Communication with Coqtop #
 #############################
+
 
 def send_until_fail():
     """
@@ -346,8 +371,11 @@ def send_until_fail():
             (eline, ecol) = message_range['stop']
             encountered_dots.append((eline, ecol + 1))
 
-            optionnal_info = response.val[1]
-            if len(response.val) > 1 and isinstance(response.val[1], tuple) and response.val[1][1]:
+            optional_info = response.val[1]
+            if len(
+                    response.val) > 1 and isinstance(
+                    response.val[1],
+                    tuple) and response.val[1][1]:
                 info_messages.append(response.val[1][1])
             info_messages += response.msg
         else:
@@ -361,7 +389,7 @@ def send_until_fail():
                     loc_e = int(response.get('loc_e'))
                     (l, c) = message_range['start']
                     (l_start, c_start) = _pos_from_offset(c, message, loc_s)
-                    (l_stop, c_stop)   = _pos_from_offset(c, message, loc_e)
+                    (l_stop, c_stop) = _pos_from_offset(c, message, loc_e)
                     error_at = ((l + l_start, c_start), (l + l_stop, c_stop))
             else:
                 print("(ANOMALY) unknown answer: %s" % ET.tostring(response))
@@ -370,6 +398,7 @@ def send_until_fail():
     info_msg += info_messages
 
     refresh()
+
 
 def _pos_from_offset(col, msg, offset):
     str = msg[:offset]
@@ -382,6 +411,7 @@ def _pos_from_offset(col, msg, offset):
 # Miscellaneous #
 #################
 
+
 def _between(begin, end):
     """
     Returns a string corresponding to the portion of the buffer between the
@@ -393,15 +423,17 @@ def _between(begin, end):
     acc = ""
     for line, str in enumerate(buf[bline:eline + 1]):
         start = bcol if line == 0 else 0
-        stop  = ecol + 1 if line == eline - bline else len(str)
+        stop = ecol + 1 if line == eline - bline else len(str)
         acc += str[start:stop] + '\n'
     return acc
+
 
 def _get_message_range(after):
     """ See [_find_next_chunk] """
     (line, col) = after
     end_pos = _find_next_chunk(line, col)
-    return { 'start':after , 'stop':end_pos } if end_pos is not None else None
+    return {'start': after, 'stop': end_pos} if end_pos is not None else None
+
 
 def _find_next_chunk(line, col):
     """
@@ -418,10 +450,11 @@ def _find_next_chunk(line, col):
         line += 1
         col = 0
 
-    if line >= blen: return
+    if line >= blen:
+        return
 
-    while buff[line][col] == ' ': # FIXME: keeping the stripped line would be
-        col += 1                  #   more efficient.
+    while buff[line][col] == ' ':  # FIXME: keeping the stripped line would be
+        col += 1  # more efficient.
 
     # Then we check if the first character of the chunk is a bullet.
     # Intially I did that only when I was sure to be in a proof (by looking in
@@ -436,15 +469,17 @@ def _find_next_chunk(line, col):
     # We might have a commentary before the bullet, we should be skiping it and
     # keep on looking.
     tail_len = len(buff[line]) - col
-    if (tail_len - 1 > 0) and buff[line][col] == '(' and buff[line][col + 1] == '*':
+    if (tail_len - 1 >
+            0) and buff[line][col] == '(' and buff[line][col + 1] == '*':
         com_end = _skip_comment(line, col + 2, 1)
-        if not com_end: return
+        if not com_end:
+            return
         (line, col) = com_end
         return _find_next_chunk(line, col)
 
-
     # If the chunk doesn't start with a bullet, we look for a dot.
     return _find_dot_after(line, col)
+
 
 def _find_dot_after(line, col):
     """
@@ -453,7 +488,8 @@ def _find_dot_after(line, col):
     comments, strings or ident paths are not valid.
     """
     b = vim.current.buffer
-    if line >= len(b): return
+    if line >= len(b):
+        return
     s = b[line][col:]
     dot_pos = s.find('.')
     com_pos = s.find('(*')
@@ -461,17 +497,20 @@ def _find_dot_after(line, col):
     if com_pos == -1 and dot_pos == -1 and str_pos == -1:
         # Nothing on this line
         return _find_dot_after(line + 1, 0)
-    elif dot_pos == -1 or (com_pos > - 1 and dot_pos > com_pos) or (str_pos > - 1 and dot_pos > str_pos):
+    elif dot_pos == -1 or (com_pos > - 1 and dot_pos > com_pos) or (
+            str_pos > - 1 and dot_pos > str_pos):
         if str_pos == -1 or (com_pos > -1 and str_pos > com_pos):
             # We see a comment opening before the next dot
             com_end = _skip_comment(line, com_pos + 2 + col, 1)
-            if not com_end: return
+            if not com_end:
+                return
             (line, col) = com_end
             return _find_dot_after(line, col)
         else:
             # We see a string starting before the next dot
             str_end = _skip_str(line, str_pos + col + 1)
-            if not str_end: return
+            if not str_end:
+                return
             (line, col) = str_end
             return _find_dot_after(line, col)
     elif dot_pos < len(s) - 1 and s[dot_pos + 1] != ' ':
@@ -491,6 +530,8 @@ def _find_dot_after(line, col):
         return (line, dot_pos + col)
 
 # TODO? factorize [_skip_str] and [_skip_comment]
+
+
 def _skip_str(line, col):
     """
     Used when we encountered the start of a string before a valid dot (see
@@ -498,13 +539,15 @@ def _skip_str(line, col):
     Returns the position of the end of the string.
     """
     b = vim.current.buffer
-    if line >= len(b): return
+    if line >= len(b):
+        return
     s = b[line][col:]
     str_end = s.find('"')
     if str_end > -1:
         return (line, col + str_end + 1)
     else:
         return _skip_str(line + 1, 0)
+
 
 def _skip_comment(line, col, nb_left):
     """
@@ -516,7 +559,8 @@ def _skip_comment(line, col, nb_left):
         return (line, col)
 
     b = vim.current.buffer
-    if line >= len(b): return
+    if line >= len(b):
+        return
     s = b[line][col:]
     com_start = s.find('(*')
     com_end = s.find('*)')
@@ -526,6 +570,7 @@ def _skip_comment(line, col, nb_left):
         return _skip_comment(line, col + com_start + 2, nb_left + 1)
     else:
         return _skip_comment(line + 1, 0, nb_left)
+
 
 def _will_be_collapsed(s):
     """
@@ -544,20 +589,25 @@ def _will_be_collapsed(s):
     else:
         return False
 
+
 def _time_to_collapse(s):
     """ Used in conjunction with [_will_be_collapsed] """
-    return True if re.match('.*(Qed|Defined)\.$', s) else False
+    return True if re.match(r'.*(Qed|Defined)\.$', s) else False
 
-## I thought python was the language with a big stdlib...
+# I thought python was the language with a big stdlib...
+
+
 def rfind(lst, cond):
     tmp = None
     for idx, elt in enumerate(lst):
-        if cond(elt): tmp = idx
+        if cond(elt):
+            tmp = idx
     return tmp
 
 ################################################
 # The ugly through behind regions highlighting #
 ################################################
+
 
 def _make_matcher(start, stop):
     if start['line'] == stop['line']:
@@ -565,23 +615,26 @@ def _make_matcher(start, stop):
     else:
         return _hard_matcher(start, stop)
 
+
 def _easy_matcher(start, stop):
     startl = ""
     startc = ""
     if start['line'] > 0:
-        startl = "\%>{0}l".format(start['line'] - 1)
+        startl = r"\%>{0}l".format(start['line'] - 1)
     if start['col'] > 0:
-        startc = "\%>{0}c".format(start['col'])
-    return '{0}{1}\%<{2}l\%<{3}c'.format(startl, startc, stop['line'] + 1, stop['col'] + 1)
+        startc = r"\%>{0}c".format(start['col'])
+    return r'{0}{1}\%<{2}l\%<{3}c'.format(
+        startl, startc, stop['line'] + 1, stop['col'] + 1)
+
 
 def _hard_matcher(start, stop):
-    first_start = {'line' : start['line'], 'col' : start['col']}
-    first_stop =  {'line' : start['line'], 'col' : 4242}
+    first_start = {'line': start['line'], 'col': start['col']}
+    first_stop = {'line': start['line'], 'col': 4242}
     first_line = _easy_matcher(first_start, first_stop)
-    mid_start = {'line' : start['line']+1, 'col' : 0}
-    mid_stop =  {'line' : stop['line']-1 , 'col' : 4242}
+    mid_start = {'line': start['line'] + 1, 'col': 0}
+    mid_stop = {'line': stop['line'] - 1, 'col': 4242}
     middle = _easy_matcher(mid_start, mid_stop)
-    last_start = {'line' : stop['line'], 'col' : 0}
-    last_stop =  {'line' : stop['line'], 'col' : stop['col']}
+    last_start = {'line': stop['line'], 'col': 0}
+    last_stop = {'line': stop['line'], 'col': stop['col']}
     last_line = _easy_matcher(last_start, last_stop)
-    return "{0}\|{1}\|{2}".format(first_line, middle, last_line)
+    return r"{0}\|{1}\|{2}".format(first_line, middle, last_line)
