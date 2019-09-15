@@ -123,7 +123,7 @@ def encode_value(v):
         return xml
     elif isinstance(v, str):
         xml = build('string')
-        xml.text = v.encode(global_encoding)
+        xml.text = unicode(v, global_encoding)
         return xml
     elif isinstance(v, int):
         xml = build('int')
