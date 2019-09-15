@@ -20,7 +20,41 @@ send_queue = deque([])
 
 error_at = None
 
-info_msg = []
+
+class BufferPanel:
+    def __init__(self, name):
+        # name :: String
+        self.name = name
+        # buffer :: vim.Buffer
+        self.buffer = _find_buffer(name)
+        # refresh :: Bool
+        self.refresh = True
+
+    def clear(self):
+        self.buffer[:] = []
+
+    def append(self, *messages):
+        message_lines = []
+        for message in messages:
+            message_lines += _split_single_info(message)
+
+        if len(message_lines) == 0:
+            return
+
+        if self.refresh:
+            self.buffer[:] = message_lines
+            self.refresh = False
+            return
+
+        if len(self.buffer) != 0:
+            self.buffer.append('')
+        self.buffer.append(message_lines)
+
+    def prepare_refresh(self):
+        self.refresh = True
+
+
+info_panel = None
 
 ###################
 # synchronization #
@@ -55,12 +89,11 @@ def sync():
 
 
 def _reset():
-    global saved_sync, encountered_dots, info_msg, error_at, send_queue
+    global saved_sync, encountered_dots, error_at, send_queue
     encountered_dots = []
     send_queue = deque([])
     saved_sync = None
     error_at = None
-    info_msg = []
     reset_color()
 
 #####################
@@ -72,6 +105,9 @@ def kill_coqtop():
     CT.kill_coqtop()
     _reset()
 
+    global info_panel
+    info_panel = None
+
 
 def goto_last_sent_dot():
     (line, col) = (0, 1) if encountered_dots == [] else encountered_dots[-1]
@@ -79,12 +115,10 @@ def goto_last_sent_dot():
 
 
 def coq_rewind(steps=1):
-    global encountered_dots, info_msg
+    global encountered_dots
 
     if steps < 1 or encountered_dots == []:
         return
-
-    clear_info()
 
     if CT.coqtop is None:
         print("Error: Coqtop isn't running. Are you sure you called :CoqLaunch?")
@@ -100,9 +134,10 @@ def coq_rewind(steps=1):
     if isinstance(response, CT.Ok):
         encountered_dots = encountered_dots[:len(encountered_dots) - steps]
     else:
-        info_msg.append(
+        message = CT.collect_texts(
             "[COQUILLE ERROR] Unexpected answer:\n\n%s" %
             CT.collect_texts(response))
+        info_panel.append(message)
 
     refresh()
 
@@ -161,9 +196,7 @@ def coq_next():
 
 
 def coq_raw_query(*args):
-    clear_info()
-
-    global info_msg
+    info_panel.prepare_refresh()
     if CT.coqtop is None:
         print("Error: Coqtop isn't running. Are you sure you called :CoqLaunch?")
         return
@@ -178,20 +211,21 @@ def coq_raw_query(*args):
         return
 
     if isinstance(response, CT.Ok):
-        info_msg += response.msg
+        info_panel.append(*response.msg)
     elif isinstance(response, CT.Err):
-        info_msg.append(CT.collect_texts(response.err))
+        info_panel.append(CT.collect_texts(response.err))
         print("FAIL")
     else:
         print("(ANOMALY) unknown answer: %s" % ET.tostring(response))  # ugly
-
-    show_info()
 
 
 def launch_coq(*args):
     encoding = vim.eval('&fileencoding') or 'utf-8'
     CT.global_encoding = encoding
     CT.restart_coq(*args)
+
+    global info_panel
+    info_panel = BufferPanel("Infos")
 
 
 def debug():
@@ -208,12 +242,11 @@ def debug():
 
 def refresh():
     show_goal()
-    show_info()
     reset_color()
 
 
 def show_goal():
-    global info_msg
+    global info_panel
 
     buff = _find_buffer('Goals')
 
@@ -222,7 +255,8 @@ def show_goal():
     response = CT.goals()
 
     if isinstance(response, CT.Err):
-        info_msg.append(CT.collect_texts(response.err))
+        message = CT.collect_texts(response.err)
+        info_panel.append(message)
         return
 
     if response is None:
@@ -230,7 +264,7 @@ def show_goal():
         print('ERROR: the Coq process died')
         return
 
-    info_msg += response.msg
+    info_panel.append(*response.msg)
 
     if response.val.val is None:
         buff[:] = ['No goals.']
@@ -264,27 +298,6 @@ def show_goal():
 
 def _split_single_info(msg):
     return map(lambda s: s.encode('utf-8'), msg.split('\n'))
-
-
-def show_info():
-    global info_msg
-
-    if not info_msg:
-        return
-
-    buff = _find_buffer('Infos')
-
-    buff[:] = _split_single_info(info_msg[0])
-
-    for msg in itertools.islice(info_msg, 1, None):
-        buff.append('')
-        buff.append(_split_single_info(msg))
-
-
-def clear_info():
-    global info_msg
-    info_msg = []
-    show_info()
 
 
 def reset_color():
@@ -347,11 +360,9 @@ def send_until_fail():
     error.
     When this function returns, [send_queue] is empty.
     """
-    clear_info()
+    global encountered_dots, error_at, info_panel
 
-    global encountered_dots, error_at, info_msg
-
-    info_messages = []
+    info_panel.prepare_refresh()
 
     while len(send_queue) > 0:
         reset_color()
@@ -366,20 +377,23 @@ def send_until_fail():
             vim.command("call coquille#KillSession()")
             print('ERROR: the Coq process died')
             return
+            print(response)
 
         if isinstance(response, CT.Ok):
             (eline, ecol) = message_range['stop']
             encountered_dots.append((eline, ecol + 1))
 
             optional_info = response.val[1]
+            messages = []
             if len(
                     response.val) > 1 and isinstance(
                     response.val[1],
                     tuple) and response.val[1][1]:
-                info_messages.append(response.val[1][1])
-            info_messages += response.msg
+                messages.append(response.val[1][1])
+            messages += response.msg
+            info_panel.append(*messages)
         elif isinstance(response, CT.Err):
-            info_messages.append(CT.collect_texts(response.err))
+            info_panel.append(CT.collect_texts(response.err))
             response = response.err
             loc_s = response.get('loc_s')
             if loc_s is not None:
@@ -393,8 +407,6 @@ def send_until_fail():
         else:
             print("(ANOMALY) unknown answer: %s" % ET.tostring(response))
             send_queue.clear()
-
-    info_msg += info_messages
 
     refresh()
 

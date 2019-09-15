@@ -1,5 +1,5 @@
 let s:coq_running=0
-let s:current_dir=expand("<sfile>:p:h") 
+let s:current_dir=expand("<sfile>:p:h")
 
 if !exists('coquille_auto_move')
     let g:coquille_auto_move="false"
@@ -22,7 +22,7 @@ endtry
 call vimbufsync#init()
 
 py if not vim.eval("s:current_dir") in sys.path:
-\    sys.path.append(vim.eval("s:current_dir")) 
+\    sys.path.append(vim.eval("s:current_dir"))
 py import coquille
 
 function! coquille#ShowPanels()
@@ -92,9 +92,6 @@ function! coquille#Launch(...)
         if !exists("g:coquille_coqtop_args")
             let g:coquille_coqtop_args = []
         endif
-        " py coquille.launch_coq(*vim.eval("map(copy(a:000),'expand(v:val)')"))
-        py coquille.launch_coq(*vim.eval("g:coquille_coqtop_args"))
-
         " make the different commands accessible
         command! -buffer GotoDot py coquille.goto_last_sent_dot()
         command! -buffer CoqNext py coquille.coq_next()
@@ -105,6 +102,9 @@ function! coquille#Launch(...)
         command! -buffer -nargs=* Coq call coquille#RawQuery(<f-args>)
 
         call coquille#ShowPanels()
+
+        " py coquille.launch_coq(*vim.eval("map(copy(a:000),'expand(v:val)')"))
+        py coquille.launch_coq(*vim.eval("g:coquille_coqtop_args"))
 
         " Automatically sync the buffer when entering insert mode: this is usefull
         " when we edit the portion of the buffer which has already been sent to coq,
